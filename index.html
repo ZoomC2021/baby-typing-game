@@ -16,6 +16,7 @@
     <p class="subtitle">Every tap and click makes fun sounds and colors ✨</p>
     <div class="intro-options">
       <label><input type="checkbox" id="opt-animal-mode"> Animal sounds</label>
+      <label><input type="checkbox" id="opt-speak-letters" checked> Speak letters</label>
       <label><input type="checkbox" id="opt-reduce-motion" checked> Reduce motion</label>
     </div>
     <select id="theme-select">
@@ -32,6 +33,11 @@
   <div id="game-area">
     <div id="particles"></div>
     <div id="key-display"></div>
+    <div id="letter-association" class="letter-association-card" aria-live="polite">
+      <span id="letter-assoc-letter" class="letter-assoc-letter"></span>
+      <span id="letter-assoc-emoji" class="letter-assoc-emoji"></span>
+      <span id="letter-assoc-word" class="letter-assoc-word"></span>
+    </div>
     <div id="settings-bar">
       <button id="mute-btn" title="Mute">🔊</button>
       <input type="range" id="volume-slider" min="0" max="100" value="100" title="Volume">

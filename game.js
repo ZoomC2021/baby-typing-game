@@ -6,6 +6,7 @@
 // --- Settings ---
 const CONFIG = {
   celebrationThreshold: 25,
+  letterAssociationDuration: 2500,
   maxPoolSize: 50,
   mouseTrailInterval: 80,
   sessionMinutes: 5
@@ -93,29 +94,419 @@ const SoundEngine = {
     osc.stop(ctx.currentTime + 0.2);
   },
 
-  playAnimalSound(letter) {
-    this.init();
+  // Helper: create an oscillator with envelope
+  _osc(type, freq, startTime, duration, vol) {
     const ctx = this.ctx;
-    const animals = {
-      A: [220, 440], B: [330, 495], C: [262, 330], D: [294, 370], E: [330, 415],
-      F: [349, 440], G: [392, 494], H: [440, 554], I: [494, 622], J: [523, 659],
-      K: [587, 740], L: [659, 831], M: [698, 880], N: [784, 988], O: [880, 1109],
-      P: [988, 1245], Q: [1047, 1319], R: [1175, 1480], S: [1319, 1661],
-      T: [1397, 1760], U: [1568, 1976], V: [1760, 2217], W: [1976, 2489],
-      X: [2093, 2637], Y: [2349, 2960], Z: [2637, 3322]
-    };
-    const freqs = animals[letter?.toUpperCase()] || [400, 600];
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(this.masterGain);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freqs[0], ctx.currentTime);
-    osc.frequency.setValueAtTime(freqs[1], ctx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.2 * this.gain(), ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.3);
+    osc.type = type;
+    if (typeof freq === 'number') {
+      osc.frequency.setValueAtTime(freq, startTime);
+    }
+    gain.gain.setValueAtTime((vol || 0.2) * this.gain(), startTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+    osc.start(startTime);
+    osc.stop(startTime + duration);
+    return osc;
+  },
+
+  // Helper: create noise burst (for hissing, purring, etc.)
+  _noise(startTime, duration, vol) {
+    const ctx = this.ctx;
+    const bufferSize = ctx.sampleRate * duration;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const gain = ctx.createGain();
+    src.connect(gain);
+    gain.connect(this.masterGain);
+    gain.gain.setValueAtTime((vol || 0.1) * this.gain(), startTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+    src.start(startTime);
+    src.stop(startTime + duration);
+  },
+
+  playAnimalSound(letter) {
+    this.init();
+    const L = letter?.toUpperCase();
+    if (this.gain() === 0) return;
+
+    // Try real audio file first, fall back to synthesized
+    if (AnimalAudioPlayer.play(L)) return;
+
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const synth = ANIMAL_SOUNDS[L];
+    if (synth) {
+      synth.call(this, ctx, t, this.gain());
+    } else {
+      this._osc('sine', 800, t, 0.15, 0.15);
+      this._osc('sine', 1000, t + 0.08, 0.1, 0.1);
+    }
+  }
+};
+
+// --- Animal Sound Definitions (Web Audio synthesis) ---
+// Each letter maps to an animal with a recognizable synthesized sound
+const ANIMAL_SOUND_ANIMALS = {
+  A: { emoji: '🐊', word: 'Alligator' },
+  B: { emoji: '🐻', word: 'Bear' },
+  C: { emoji: '🐱', word: 'Cat' },
+  D: { emoji: '🐕', word: 'Dog' },
+  E: { emoji: '🐘', word: 'Elephant' },
+  F: { emoji: '🐸', word: 'Frog' },
+  G: { emoji: '🦍', word: 'Gorilla' },
+  H: { emoji: '🐴', word: 'Horse' },
+  I: { emoji: '🦎', word: 'Iguana' },
+  J: { emoji: '🐦', word: 'Jay' },
+  K: { emoji: '🐨', word: 'Koala' },
+  L: { emoji: '🦁', word: 'Lion' },
+  M: { emoji: '🐄', word: 'Cow' },
+  N: { emoji: '🦉', word: 'Nightingale' },
+  O: { emoji: '🦉', word: 'Owl' },
+  P: { emoji: '🐷', word: 'Pig' },
+  Q: { emoji: '🦆', word: 'Quack Duck' },
+  R: { emoji: '🐓', word: 'Rooster' },
+  S: { emoji: '🐍', word: 'Snake' },
+  T: { emoji: '🐅', word: 'Tiger' },
+  U: { emoji: '🦄', word: 'Unicorn' },
+  V: { emoji: '🦅', word: 'Vulture' },
+  W: { emoji: '🐺', word: 'Wolf' },
+  X: { emoji: '🐂', word: 'Ox' },
+  Y: { emoji: '🦬', word: 'Yak' },
+  Z: { emoji: '🦓', word: 'Zebra' }
+};
+
+// --- Real Animal Audio Files ---
+// Drop .mp3 files into sounds/ folder matching these names
+const ANIMAL_AUDIO_FILES = {
+  A: 'sounds/alligator.mp3',
+  B: 'sounds/bear.mp3',
+  C: 'sounds/cat.mp3',
+  D: 'sounds/dog.mp3',
+  E: 'sounds/elephant.mp3',
+  F: 'sounds/frog.mp3',
+  G: 'sounds/gorilla.mp3',
+  H: 'sounds/horse.mp3',
+  I: 'sounds/iguana.mp3',
+  J: 'sounds/jay.mp3',
+  K: 'sounds/koala.mp3',
+  L: 'sounds/lion.mp3',
+  M: 'sounds/cow.mp3',
+  N: 'sounds/nightingale.mp3',
+  O: 'sounds/owl.mp3',
+  P: 'sounds/pig.mp3',
+  Q: 'sounds/duck.mp3',
+  R: 'sounds/rooster.mp3',
+  S: 'sounds/snake.mp3',
+  T: 'sounds/tiger.mp3',
+  U: 'sounds/unicorn.mp3',
+  V: 'sounds/vulture.mp3',
+  W: 'sounds/wolf.mp3',
+  X: 'sounds/ox.mp3',
+  Y: 'sounds/yak.mp3',
+  Z: 'sounds/zebra.mp3'
+};
+
+const AnimalAudioPlayer = {
+  cache: {},
+  loaded: {},
+
+  preload() {
+    for (const [letter, src] of Object.entries(ANIMAL_AUDIO_FILES)) {
+      const audio = new Audio();
+      audio.preload = 'auto';
+      audio.src = src;
+      audio.addEventListener('canplaythrough', () => { this.loaded[letter] = true; }, { once: true });
+      audio.addEventListener('error', () => { this.loaded[letter] = false; });
+      this.cache[letter] = audio;
+    }
+  },
+
+  // Volume multiplier relative to master (keeps animal sounds quieter than speech)
+  volumeScale: 0.4,
+
+  play(letter) {
+    const L = letter?.toUpperCase();
+    if (!this.loaded[L]) return false;
+    const audio = this.cache[L];
+    audio.volume = SoundEngine.gain() * this.volumeScale;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+    return true;
+  }
+};
+
+// --- Synthesized Animal Sounds (fallback) ---
+const ANIMAL_SOUNDS = {
+  // Alligator: low rumbling growl
+  A(ctx, t) {
+    const o = this._osc('sawtooth', 60, t, 0.5, 0.2);
+    o.frequency.exponentialRampToValueAtTime(40, t + 0.5);
+    this._noise(t, 0.3, 0.05);
+  },
+  // Bear: deep growl with vibrato
+  B(ctx, t) {
+    const o = this._osc('sawtooth', 80, t, 0.6, 0.2);
+    o.frequency.setValueAtTime(80, t);
+    o.frequency.linearRampToValueAtTime(90, t + 0.1);
+    o.frequency.linearRampToValueAtTime(70, t + 0.2);
+    o.frequency.linearRampToValueAtTime(85, t + 0.3);
+    o.frequency.linearRampToValueAtTime(60, t + 0.6);
+  },
+  // Cat: meow — rising then falling
+  C(ctx, t) {
+    const o = this._osc('sine', 500, t, 0.5, 0.2);
+    o.frequency.exponentialRampToValueAtTime(700, t + 0.15);
+    o.frequency.exponentialRampToValueAtTime(400, t + 0.5);
+    this._osc('sine', 1000, t, 0.4, 0.05);
+  },
+  // Dog: bark — sharp attack
+  D(ctx, t) {
+    const o = this._osc('square', 300, t, 0.15, 0.2);
+    o.frequency.exponentialRampToValueAtTime(200, t + 0.15);
+    this._osc('square', 350, t + 0.2, 0.12, 0.15);
+    this._noise(t, 0.08, 0.15);
+  },
+  // Elephant: trumpet — low to high
+  E(ctx, t) {
+    const o = this._osc('sawtooth', 150, t, 0.7, 0.2);
+    o.frequency.exponentialRampToValueAtTime(400, t + 0.2);
+    o.frequency.exponentialRampToValueAtTime(500, t + 0.4);
+    o.frequency.exponentialRampToValueAtTime(200, t + 0.7);
+  },
+  // Frog: ribbit — two quick blips
+  F(ctx, t) {
+    const o1 = this._osc('sine', 400, t, 0.12, 0.2);
+    o1.frequency.exponentialRampToValueAtTime(200, t + 0.12);
+    const o2 = this._osc('sine', 350, t + 0.15, 0.12, 0.15);
+    o2.frequency.exponentialRampToValueAtTime(180, t + 0.27);
+  },
+  // Gorilla: chest-beat thumps
+  G(ctx, t) {
+    for (let i = 0; i < 4; i++) {
+      this._osc('sine', 70 + i * 5, t + i * 0.1, 0.08, 0.2);
+      this._noise(t + i * 0.1, 0.05, 0.1);
+    }
+  },
+  // Horse: neigh — rising whinny
+  H(ctx, t) {
+    const o = this._osc('sawtooth', 300, t, 0.6, 0.15);
+    o.frequency.exponentialRampToValueAtTime(600, t + 0.15);
+    o.frequency.exponentialRampToValueAtTime(800, t + 0.3);
+    o.frequency.exponentialRampToValueAtTime(400, t + 0.6);
+  },
+  // Iguana: short clicking chirp
+  I(ctx, t) {
+    this._osc('square', 2000, t, 0.03, 0.1);
+    this._osc('square', 2200, t + 0.06, 0.03, 0.08);
+    this._osc('square', 1800, t + 0.12, 0.03, 0.06);
+  },
+  // Jay (bird): sharp chirp
+  J(ctx, t) {
+    const o = this._osc('sine', 2000, t, 0.15, 0.15);
+    o.frequency.exponentialRampToValueAtTime(3000, t + 0.05);
+    o.frequency.exponentialRampToValueAtTime(1500, t + 0.15);
+    this._osc('sine', 2500, t + 0.18, 0.1, 0.1);
+  },
+  // Koala: nasal grunt
+  K(ctx, t) {
+    const o = this._osc('sawtooth', 120, t, 0.4, 0.15);
+    o.frequency.linearRampToValueAtTime(100, t + 0.2);
+    o.frequency.linearRampToValueAtTime(130, t + 0.4);
+    this._noise(t + 0.05, 0.2, 0.05);
+  },
+  // Lion: roar — big sawtooth
+  L(ctx, t) {
+    const o = this._osc('sawtooth', 100, t, 0.8, 0.25);
+    o.frequency.exponentialRampToValueAtTime(200, t + 0.2);
+    o.frequency.exponentialRampToValueAtTime(150, t + 0.5);
+    o.frequency.exponentialRampToValueAtTime(80, t + 0.8);
+    this._noise(t, 0.6, 0.08);
+  },
+  // Cow: moo — low and long
+  M(ctx, t) {
+    const o = this._osc('sine', 120, t, 0.8, 0.25);
+    o.frequency.exponentialRampToValueAtTime(150, t + 0.2);
+    o.frequency.exponentialRampToValueAtTime(130, t + 0.5);
+    o.frequency.exponentialRampToValueAtTime(100, t + 0.8);
+    this._osc('sine', 240, t, 0.6, 0.08);
+  },
+  // Nightingale: melodic trill
+  N(ctx, t) {
+    const notes = [1200, 1500, 1800, 1500, 1200, 1600];
+    notes.forEach((f, i) => {
+      this._osc('sine', f, t + i * 0.08, 0.08, 0.12);
+    });
+  },
+  // Owl: hoo-hoo
+  O(ctx, t) {
+    const o1 = this._osc('sine', 350, t, 0.3, 0.2);
+    o1.frequency.exponentialRampToValueAtTime(300, t + 0.3);
+    const o2 = this._osc('sine', 300, t + 0.4, 0.35, 0.18);
+    o2.frequency.exponentialRampToValueAtTime(250, t + 0.75);
+  },
+  // Pig: oink — nasal squeal
+  P(ctx, t) {
+    const o = this._osc('sawtooth', 300, t, 0.2, 0.15);
+    o.frequency.exponentialRampToValueAtTime(500, t + 0.1);
+    o.frequency.exponentialRampToValueAtTime(250, t + 0.2);
+    this._osc('sawtooth', 350, t + 0.25, 0.15, 0.12);
+  },
+  // Quack Duck: quack quack
+  Q(ctx, t) {
+    const q = (start) => {
+      const o = this._osc('square', 500, start, 0.12, 0.15);
+      o.frequency.exponentialRampToValueAtTime(300, start + 0.12);
+    };
+    q(t);
+    q(t + 0.18);
+  },
+  // Rooster: cock-a-doodle — rising
+  R(ctx, t) {
+    const o = this._osc('sawtooth', 400, t, 0.6, 0.2);
+    o.frequency.exponentialRampToValueAtTime(800, t + 0.15);
+    o.frequency.exponentialRampToValueAtTime(1000, t + 0.3);
+    o.frequency.setValueAtTime(1000, t + 0.35);
+    o.frequency.exponentialRampToValueAtTime(600, t + 0.6);
+  },
+  // Snake: hiss — filtered noise
+  S(ctx, t) {
+    this._noise(t, 0.6, 0.12);
+  },
+  // Tiger: growl-roar
+  T(ctx, t) {
+    const o = this._osc('sawtooth', 90, t, 0.5, 0.2);
+    o.frequency.linearRampToValueAtTime(110, t + 0.1);
+    o.frequency.linearRampToValueAtTime(80, t + 0.2);
+    o.frequency.linearRampToValueAtTime(100, t + 0.3);
+    o.frequency.exponentialRampToValueAtTime(60, t + 0.5);
+    this._noise(t, 0.4, 0.06);
+  },
+  // Unicorn: magical sparkle tone
+  U(ctx, t) {
+    this._osc('sine', 800, t, 0.3, 0.1);
+    this._osc('sine', 1200, t + 0.05, 0.25, 0.1);
+    this._osc('sine', 1600, t + 0.1, 0.2, 0.08);
+    this._osc('sine', 2000, t + 0.15, 0.15, 0.06);
+  },
+  // Vulture: screech
+  V(ctx, t) {
+    const o = this._osc('sawtooth', 1500, t, 0.3, 0.12);
+    o.frequency.exponentialRampToValueAtTime(2500, t + 0.1);
+    o.frequency.exponentialRampToValueAtTime(1000, t + 0.3);
+    this._noise(t, 0.15, 0.06);
+  },
+  // Wolf: howl — rising and sustaining
+  W(ctx, t) {
+    const o = this._osc('sine', 200, t, 0.8, 0.2);
+    o.frequency.exponentialRampToValueAtTime(500, t + 0.3);
+    o.frequency.setValueAtTime(500, t + 0.5);
+    o.frequency.exponentialRampToValueAtTime(450, t + 0.8);
+    this._osc('sine', 400, t + 0.1, 0.5, 0.06);
+  },
+  // Ox: deep bellow
+  X(ctx, t) {
+    const o = this._osc('sawtooth', 100, t, 0.5, 0.2);
+    o.frequency.exponentialRampToValueAtTime(130, t + 0.15);
+    o.frequency.exponentialRampToValueAtTime(90, t + 0.5);
+  },
+  // Yak: snorting grunt
+  Y(ctx, t) {
+    this._osc('sawtooth', 110, t, 0.2, 0.15);
+    this._noise(t + 0.05, 0.15, 0.1);
+    this._osc('sawtooth', 95, t + 0.25, 0.2, 0.12);
+  },
+  // Zebra: bark-like bray
+  Z(ctx, t) {
+    const o = this._osc('square', 250, t, 0.15, 0.15);
+    o.frequency.exponentialRampToValueAtTime(400, t + 0.05);
+    o.frequency.exponentialRampToValueAtTime(200, t + 0.15);
+    this._osc('square', 300, t + 0.2, 0.12, 0.12);
+  }
+};
+
+// --- Letter-to-Word Association (vocabulary & letter recognition) ---
+const LETTER_ASSOCIATIONS = {
+  A: { emoji: '🍎', word: 'Apple' },
+  B: { emoji: '🏀', word: 'Ball' },
+  C: { emoji: '🐱', word: 'Cat' },
+  D: { emoji: '🐕', word: 'Dog' },
+  E: { emoji: '🐘', word: 'Elephant' },
+  F: { emoji: '🐟', word: 'Fish' },
+  G: { emoji: '🍇', word: 'Grapes' },
+  H: { emoji: '🏠', word: 'House' },
+  I: { emoji: '🍦', word: 'Ice cream' },
+  J: { emoji: '🧃', word: 'Juice' },
+  K: { emoji: '🪁', word: 'Kite' },
+  L: { emoji: '🦁', word: 'Lion' },
+  M: { emoji: '🌙', word: 'Moon' },
+  N: { emoji: '🪺', word: 'Nest' },
+  O: { emoji: '🍊', word: 'Orange' },
+  P: { emoji: '🐧', word: 'Penguin' },
+  Q: { emoji: '👑', word: 'Queen' },
+  R: { emoji: '🌈', word: 'Rainbow' },
+  S: { emoji: '☀️', word: 'Sun' },
+  T: { emoji: '🚂', word: 'Train' },
+  U: { emoji: '☂️', word: 'Umbrella' },
+  V: { emoji: '🎻', word: 'Violin' },
+  W: { emoji: '🍉', word: 'Watermelon' },
+  X: { emoji: '🎵', word: 'Xylophone' },
+  Y: { emoji: '🪀', word: 'Yo-yo' },
+  Z: { emoji: '🦓', word: 'Zebra' }
+};
+
+// --- Number Recognition (0-9) ---
+const NUMBER_ASSOCIATIONS = {
+  '0': { emoji: '🥚', word: 'Zero' },
+  '1': { emoji: '🍎', word: 'One' },
+  '2': { emoji: '🏀', word: 'Two' },
+  '3': { emoji: '🐱', word: 'Three' },
+  '4': { emoji: '🚗', word: 'Four' },
+  '5': { emoji: '✋', word: 'Five' },
+  '6': { emoji: '🐝', word: 'Six' },
+  '7': { emoji: '🌈', word: 'Seven' },
+  '8': { emoji: '🕷️', word: 'Eight' },
+  '9': { emoji: '🎾', word: 'Nine' }
+};
+
+// --- Speech Engine (Web Speech API) ---
+const SpeechEngine = {
+  enabled: true,
+  lastSpoke: 0,
+  minInterval: 300,
+
+  speak(text) {
+    if (!this.enabled || SoundEngine.muted) return;
+    const now = Date.now();
+    if (now - this.lastSpoke < this.minInterval) return;
+    this.lastSpoke = now;
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.2;
+    utterance.volume = SoundEngine.volume;
+    speechSynthesis.speak(utterance);
+  },
+
+  speakKey(key) {
+    if (key.length === 1 && /[a-zA-Z]/.test(key)) {
+      const upper = key.toUpperCase();
+      if (settings.animalMode) {
+        const animal = ANIMAL_SOUND_ANIMALS[upper];
+        if (animal) {
+          this.speak(upper + ' is for ' + animal.word);
+          return;
+        }
+      }
+      this.speak(upper);
+    } else if (key.length === 1 && /[0-9]/.test(key)) {
+      this.speak(key);
+    }
   }
 };
 
@@ -230,6 +621,47 @@ function showKeyLetter(key, x, y) {
   display._hideTimer = setTimeout(() => display.classList.remove('visible'), 400);
 }
 
+function showLetterAssociation(letter) {
+  const upper = letter.toUpperCase();
+  const assoc = settings.animalMode
+    ? (ANIMAL_SOUND_ANIMALS[upper] || LETTER_ASSOCIATIONS[upper])
+    : LETTER_ASSOCIATIONS[upper];
+  if (!assoc) return;
+
+  const card = document.getElementById('letter-association');
+  const letterEl = document.getElementById('letter-assoc-letter');
+  const emojiEl = document.getElementById('letter-assoc-emoji');
+  const wordEl = document.getElementById('letter-assoc-word');
+
+  letterEl.textContent = upper;
+  emojiEl.textContent = assoc.emoji;
+  wordEl.textContent = assoc.word;
+  card.style.background = `linear-gradient(135deg, ${randomColor()}40, ${randomColor()}80)`;
+  card.classList.add('visible');
+
+  clearTimeout(card._hideTimer);
+  card._hideTimer = setTimeout(() => card.classList.remove('visible'), CONFIG.letterAssociationDuration);
+}
+
+function showNumberAssociation(digit) {
+  const assoc = NUMBER_ASSOCIATIONS[digit];
+  if (!assoc) return;
+
+  const card = document.getElementById('letter-association');
+  const letterEl = document.getElementById('letter-assoc-letter');
+  const emojiEl = document.getElementById('letter-assoc-emoji');
+  const wordEl = document.getElementById('letter-assoc-word');
+
+  letterEl.textContent = digit;
+  emojiEl.textContent = assoc.emoji;
+  wordEl.textContent = assoc.word;
+  card.style.background = `linear-gradient(135deg, ${randomColor()}40, ${randomColor()}80)`;
+  card.classList.add('visible');
+
+  clearTimeout(card._hideTimer);
+  card._hideTimer = setTimeout(() => card.classList.remove('visible'), CONFIG.letterAssociationDuration);
+}
+
 function spawnFloatingLetter(key, x, y) {
   const particles = document.getElementById('particles');
   const letter = Pool.getLetter();
@@ -287,11 +719,13 @@ let reduceMotion = true;
 function startGame() {
   gameStarted = true;
   settings.animalMode = document.getElementById('opt-animal-mode').checked;
+  SpeechEngine.enabled = document.getElementById('opt-speak-letters').checked;
   reduceMotion = document.getElementById('opt-reduce-motion').checked;
   document.body.classList.toggle('reduce-motion', reduceMotion);
   currentTheme = document.getElementById('theme-select').value;
   document.getElementById('intro-overlay').classList.add('hidden');
   SoundEngine.init();
+  AnimalAudioPlayer.preload();
   applyTheme(currentTheme);
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -328,6 +762,8 @@ function handleKeyDown(e) {
   else if (settings.animalMode) SoundEngine.playAnimalSound(e.key);
   else SoundEngine.playKeySound(e.key);
 
+  SpeechEngine.speakKey(e.key);
+
   const rect = document.body.getBoundingClientRect();
   const x = rect.width / 2 + (Math.random() - 0.5) * 200;
   const y = rect.height / 2 + (Math.random() - 0.5) * 200;
@@ -335,6 +771,12 @@ function handleKeyDown(e) {
   createBubble(x, y, false);
   showKeyLetter(e.key, x, y);
   spawnFloatingLetter(e.key, x, y - 50);
+
+  if (/^[a-zA-Z]$/.test(e.key)) {
+    showLetterAssociation(e.key);
+  } else if (/^[0-9]$/.test(e.key)) {
+    showNumberAssociation(e.key);
+  }
 
   interactionCount++;
   if (interactionCount % CONFIG.celebrationThreshold === 0) {
@@ -425,6 +867,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('opt-animal-mode').addEventListener('change', (e) => {
     settings.animalMode = e.target.checked;
+  });
+  document.getElementById('opt-speak-letters').addEventListener('change', (e) => {
+    SpeechEngine.enabled = e.target.checked;
   });
   document.getElementById('opt-reduce-motion').addEventListener('change', (e) => {
     reduceMotion = e.target.checked;

@@ -229,6 +229,73 @@ body.screen-shake {
   }
 }
 
+/* Letter-to-word association card */
+.letter-association-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 3rem;
+  border-radius: 24px;
+  border: 4px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 90;
+  transition: opacity 0.25s ease;
+}
+
+.letter-association-card.visible {
+  opacity: 1;
+  animation: letterCardPop 0.4s ease-out;
+}
+
+body.reduce-motion .letter-association-card.visible {
+  animation: none;
+}
+
+@keyframes letterCardPop {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.letter-assoc-letter {
+  font-size: clamp(4rem, 18vw, 10rem);
+  font-weight: bold;
+  color: white;
+  text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.25);
+  line-height: 1;
+}
+
+.letter-assoc-emoji {
+  font-size: clamp(4rem, 15vw, 8rem);
+  line-height: 1;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+.letter-assoc-word {
+  font-size: clamp(1.5rem, 5vw, 3rem);
+  font-weight: bold;
+  color: white;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+  text-transform: capitalize;
+}
+
 /* Settings bar */
 #settings-bar {
   position: fixed;

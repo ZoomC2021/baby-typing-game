@@ -130,17 +130,20 @@ const SoundEngine = {
     src.stop(startTime + duration);
   },
 
-  playAnimalSound(letter) {
+  playAnimalSound(letter, animalOverride) {
     this.init();
     const L = letter?.toUpperCase();
     if (this.gain() === 0) return;
 
     // Try real audio file first, fall back to synthesized
-    if (AnimalAudioPlayer.play(L)) return;
+    if (AnimalAudioPlayer.play(L, animalOverride)) return;
 
     const ctx = this.ctx;
     const t = ctx.currentTime;
-    const synth = ANIMAL_SOUNDS[L];
+    // For C with rotation: use cow synth when animal is Cow
+    const synth = (L === 'C' && animalOverride?.word === 'Cow')
+      ? ANIMAL_SOUNDS.C_COW
+      : ANIMAL_SOUNDS[L];
     if (synth) {
       synth.call(this, ctx, t, this.gain());
     } else {
@@ -150,22 +153,31 @@ const SoundEngine = {
   }
 };
 
+// --- Rotating Animals (alternate between options per keypress) ---
+const ROTATING_ANIMALS = {
+  C: [
+    { emoji: '🐱', word: 'Cat', src: 'sounds/cat.mp3' },
+    { emoji: '🐄', word: 'Cow', src: 'sounds/cow.mp3' }
+  ]
+};
+let rotationIndex = { C: 0 };
+
 // --- Animal Sound Definitions (Web Audio synthesis) ---
 // Each letter maps to an animal with a recognizable synthesized sound
 const ANIMAL_SOUND_ANIMALS = {
-  A: { emoji: '🐊', word: 'Alligator' },
+  A: { emoji: '🐵', word: 'Ape' },
   B: { emoji: '🐻', word: 'Bear' },
   C: { emoji: '🐱', word: 'Cat' },
   D: { emoji: '🐕', word: 'Dog' },
   E: { emoji: '🐘', word: 'Elephant' },
   F: { emoji: '🐸', word: 'Frog' },
-  G: { emoji: '🦍', word: 'Gorilla' },
+  G: { emoji: '🐐', word: 'Goat' },
   H: { emoji: '🐴', word: 'Horse' },
-  I: { emoji: '🦎', word: 'Iguana' },
+  I: { emoji: '🦗', word: 'Insect' },
   J: { emoji: '🐦', word: 'Jay' },
   K: { emoji: '🐨', word: 'Koala' },
   L: { emoji: '🦁', word: 'Lion' },
-  M: { emoji: '🐄', word: 'Cow' },
+  M: { emoji: '🐒', word: 'Monkey' },
   N: { emoji: '🦉', word: 'Nightingale' },
   O: { emoji: '🦉', word: 'Owl' },
   P: { emoji: '🐷', word: 'Pig' },
@@ -184,19 +196,19 @@ const ANIMAL_SOUND_ANIMALS = {
 // --- Real Animal Audio Files ---
 // Drop .mp3 files into sounds/ folder matching these names
 const ANIMAL_AUDIO_FILES = {
-  A: 'sounds/alligator.mp3',
+  A: 'sounds/ape.mp3',
   B: 'sounds/bear.mp3',
-  C: 'sounds/cat.mp3',
+  C: 'sounds/cat.mp3', // also cow.mp3 via ROTATING_ANIMALS
   D: 'sounds/dog.mp3',
   E: 'sounds/elephant.mp3',
   F: 'sounds/frog.mp3',
-  G: 'sounds/gorilla.mp3',
+  G: 'sounds/goat.mp3',
   H: 'sounds/horse.mp3',
-  I: 'sounds/iguana.mp3',
+  I: 'sounds/insect.mp3',
   J: 'sounds/jay.mp3',
   K: 'sounds/koala.mp3',
   L: 'sounds/lion.mp3',
-  M: 'sounds/cow.mp3',
+  M: 'sounds/monkey.mp3',
   N: 'sounds/nightingale.mp3',
   O: 'sounds/owl.mp3',
   P: 'sounds/pig.mp3',
@@ -218,6 +230,7 @@ const AnimalAudioPlayer = {
 
   preload() {
     for (const [letter, src] of Object.entries(ANIMAL_AUDIO_FILES)) {
+      if (ROTATING_ANIMALS[letter]) continue;
       const audio = new Audio();
       audio.preload = 'auto';
       audio.src = src;
@@ -225,15 +238,41 @@ const AnimalAudioPlayer = {
       audio.addEventListener('error', () => { this.loaded[letter] = false; });
       this.cache[letter] = audio;
     }
+    // Preload alternates for rotating letters (e.g. C = cat/cow)
+    for (const [letter, options] of Object.entries(ROTATING_ANIMALS)) {
+      this.cache[letter] = {};
+      options.forEach((opt, i) => {
+        const audio = new Audio();
+        audio.preload = 'auto';
+        audio.src = opt.src;
+        const key = opt.src;
+        audio.addEventListener('canplaythrough', () => {
+          this.loaded[letter] = (this.loaded[letter] || 0) + 1;
+        }, { once: true });
+        audio.addEventListener('error', () => {});
+        this.cache[letter][key] = audio;
+      });
+    }
   },
 
   // Volume multiplier relative to master (keeps animal sounds quieter than speech)
   volumeScale: 0.4,
 
-  play(letter) {
+  play(letter, animalOverride) {
     const L = letter?.toUpperCase();
+    if (animalOverride?.src && ROTATING_ANIMALS[L]) {
+      const cache = this.cache[L];
+      if (cache && cache[animalOverride.src]) {
+        const audio = cache[animalOverride.src];
+        audio.volume = SoundEngine.gain() * this.volumeScale;
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+        return true;
+      }
+    }
     if (!this.loaded[L]) return false;
     const audio = this.cache[L];
+    if (typeof audio?.play !== 'function') return false;
     audio.volume = SoundEngine.gain() * this.volumeScale;
     audio.currentTime = 0;
     audio.play().catch(() => {});
@@ -243,11 +282,12 @@ const AnimalAudioPlayer = {
 
 // --- Synthesized Animal Sounds (fallback) ---
 const ANIMAL_SOUNDS = {
-  // Alligator: low rumbling growl
+  // Ape: oo-oo-ah-ah hooting
   A(ctx, t) {
-    const o = this._osc('sawtooth', 60, t, 0.5, 0.2);
-    o.frequency.exponentialRampToValueAtTime(40, t + 0.5);
-    this._noise(t, 0.3, 0.05);
+    this._osc('sine', 300, t, 0.15, 0.2);
+    this._osc('sine', 300, t + 0.2, 0.15, 0.2);
+    const o = this._osc('sine', 500, t + 0.4, 0.15, 0.25);
+    this._osc('sine', 500, t + 0.6, 0.15, 0.25);
   },
   // Bear: deep growl with vibrato
   B(ctx, t) {
@@ -264,6 +304,14 @@ const ANIMAL_SOUNDS = {
     o.frequency.exponentialRampToValueAtTime(700, t + 0.15);
     o.frequency.exponentialRampToValueAtTime(400, t + 0.5);
     this._osc('sine', 1000, t, 0.4, 0.05);
+  },
+  // Cow: moo — low and long (used for C rotation fallback)
+  C_COW(ctx, t) {
+    const o = this._osc('sine', 120, t, 0.8, 0.25);
+    o.frequency.exponentialRampToValueAtTime(150, t + 0.2);
+    o.frequency.exponentialRampToValueAtTime(130, t + 0.5);
+    o.frequency.exponentialRampToValueAtTime(100, t + 0.8);
+    this._osc('sine', 240, t, 0.6, 0.08);
   },
   // Dog: bark — sharp attack
   D(ctx, t) {
@@ -286,12 +334,13 @@ const ANIMAL_SOUNDS = {
     const o2 = this._osc('sine', 350, t + 0.15, 0.12, 0.15);
     o2.frequency.exponentialRampToValueAtTime(180, t + 0.27);
   },
-  // Gorilla: chest-beat thumps
+  // Goat: bleating "baa"
   G(ctx, t) {
-    for (let i = 0; i < 4; i++) {
-      this._osc('sine', 70 + i * 5, t + i * 0.1, 0.08, 0.2);
-      this._noise(t + i * 0.1, 0.05, 0.1);
-    }
+    const o = this._osc('sawtooth', 250, t, 0.5, 0.2);
+    o.frequency.exponentialRampToValueAtTime(350, t + 0.1);
+    o.frequency.exponentialRampToValueAtTime(300, t + 0.25);
+    o.frequency.exponentialRampToValueAtTime(200, t + 0.5);
+    this._osc('sine', 500, t, 0.4, 0.06);
   },
   // Horse: neigh — rising whinny
   H(ctx, t) {
@@ -300,11 +349,12 @@ const ANIMAL_SOUNDS = {
     o.frequency.exponentialRampToValueAtTime(800, t + 0.3);
     o.frequency.exponentialRampToValueAtTime(400, t + 0.6);
   },
-  // Iguana: short clicking chirp
+  // Insect (Cricket): chirping
   I(ctx, t) {
-    this._osc('square', 2000, t, 0.03, 0.1);
-    this._osc('square', 2200, t + 0.06, 0.03, 0.08);
-    this._osc('square', 1800, t + 0.12, 0.03, 0.06);
+    for (let i = 0; i < 6; i++) {
+      this._osc('square', 4000, t + i * 0.1, 0.04, 0.08);
+      this._osc('square', 4500, t + i * 0.1 + 0.04, 0.04, 0.06);
+    }
   },
   // Jay (bird): sharp chirp
   J(ctx, t) {
@@ -328,13 +378,13 @@ const ANIMAL_SOUNDS = {
     o.frequency.exponentialRampToValueAtTime(80, t + 0.8);
     this._noise(t, 0.6, 0.08);
   },
-  // Cow: moo — low and long
+  // Monkey: ooo-ooo-ooo — chattering screech
   M(ctx, t) {
-    const o = this._osc('sine', 120, t, 0.8, 0.25);
-    o.frequency.exponentialRampToValueAtTime(150, t + 0.2);
-    o.frequency.exponentialRampToValueAtTime(130, t + 0.5);
-    o.frequency.exponentialRampToValueAtTime(100, t + 0.8);
-    this._osc('sine', 240, t, 0.6, 0.08);
+    for (let i = 0; i < 3; i++) {
+      const o = this._osc('sawtooth', 600 + i * 100, t + i * 0.12, 0.15, 0.15);
+      o.frequency.exponentialRampToValueAtTime(800, t + i * 0.12 + 0.08);
+      o.frequency.exponentialRampToValueAtTime(500, t + i * 0.12 + 0.15);
+    }
   },
   // Nightingale: melodic trill
   N(ctx, t) {
@@ -479,25 +529,42 @@ const SpeechEngine = {
   enabled: true,
   lastSpoke: 0,
   minInterval: 300,
+  _femaleVoice: null,
+  _voicesLoaded: false,
+
+  _loadFemaleVoice() {
+    const voices = speechSynthesis.getVoices();
+    if (!voices.length) return;
+    this._voicesLoaded = true;
+    // Prefer English female voices
+    const femaleKeywords = ['female', 'woman', 'zira', 'hazel', 'susan', 'samantha', 'karen', 'victoria', 'fiona', 'moira', 'tessa', 'allison', 'ava', 'jenny'];
+    const enVoices = voices.filter(v => v.lang.startsWith('en'));
+    this._femaleVoice =
+      enVoices.find(v => femaleKeywords.some(k => v.name.toLowerCase().includes(k))) ||
+      enVoices.find(v => v.name.toLowerCase().includes('female')) ||
+      enVoices[0] || voices[0];
+  },
 
   speak(text) {
     if (!this.enabled || SoundEngine.muted) return;
     const now = Date.now();
     if (now - this.lastSpoke < this.minInterval) return;
     this.lastSpoke = now;
+    if (!this._voicesLoaded) this._loadFemaleVoice();
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
+    if (this._femaleVoice) utterance.voice = this._femaleVoice;
     utterance.rate = 0.9;
     utterance.pitch = 1.2;
     utterance.volume = SoundEngine.volume;
     speechSynthesis.speak(utterance);
   },
 
-  speakKey(key) {
+  speakKey(key, animalOverride) {
     if (key.length === 1 && /[a-zA-Z]/.test(key)) {
       const upper = key.toUpperCase();
       if (settings.animalMode) {
-        const animal = ANIMAL_SOUND_ANIMALS[upper];
+        const animal = animalOverride || ANIMAL_SOUND_ANIMALS[upper];
         if (animal) {
           this.speak(upper + ' is for ' + animal.word);
           return;
@@ -621,10 +688,10 @@ function showKeyLetter(key, x, y) {
   display._hideTimer = setTimeout(() => display.classList.remove('visible'), 400);
 }
 
-function showLetterAssociation(letter) {
+function showLetterAssociation(letter, animalOverride) {
   const upper = letter.toUpperCase();
   const assoc = settings.animalMode
-    ? (ANIMAL_SOUND_ANIMALS[upper] || LETTER_ASSOCIATIONS[upper])
+    ? (animalOverride || ANIMAL_SOUND_ANIMALS[upper] || LETTER_ASSOCIATIONS[upper])
     : LETTER_ASSOCIATIONS[upper];
   if (!assoc) return;
 
@@ -758,11 +825,21 @@ function handleKeyDown(e) {
   lastKeyTime = now;
 
   const isSpecial = ['Space', 'Enter', 'Tab', 'Escape'].includes(e.key);
+  let animalOverride = null;
+  if (settings.animalMode && /^[a-zA-Z]$/.test(e.key)) {
+    const upper = e.key.toUpperCase();
+    if (ROTATING_ANIMALS[upper]) {
+      const rot = ROTATING_ANIMALS[upper];
+      const idx = (rotationIndex[upper] ?? 0) % rot.length;
+      animalOverride = rot[idx];
+      rotationIndex[upper] = (idx + 1) % rot.length;
+    }
+  }
   if (isSpecial) SoundEngine.playBoopSound();
-  else if (settings.animalMode) SoundEngine.playAnimalSound(e.key);
+  else if (settings.animalMode) SoundEngine.playAnimalSound(e.key, animalOverride);
   else SoundEngine.playKeySound(e.key);
 
-  SpeechEngine.speakKey(e.key);
+  SpeechEngine.speakKey(e.key, animalOverride);
 
   const rect = document.body.getBoundingClientRect();
   const x = rect.width / 2 + (Math.random() - 0.5) * 200;
@@ -773,7 +850,7 @@ function handleKeyDown(e) {
   spawnFloatingLetter(e.key, x, y - 50);
 
   if (/^[a-zA-Z]$/.test(e.key)) {
-    showLetterAssociation(e.key);
+    showLetterAssociation(e.key, animalOverride);
   } else if (/^[0-9]$/.test(e.key)) {
     showNumberAssociation(e.key);
   }
@@ -816,6 +893,9 @@ function handleTouch(e) {
   e.preventDefault();
   if (e.touches.length > 0) {
     const t = e.touches[0];
+    const target = document.elementFromPoint(t.clientX, t.clientY);
+    const phraseBtn = target?.closest('.phrase-btn');
+    if (phraseBtn?.dataset.phrase) SpeechEngine.speak(phraseBtn.dataset.phrase);
     const ev = new MouseEvent('click', { clientX: t.clientX, clientY: t.clientY });
     handleClick(ev);
   }
@@ -858,6 +938,7 @@ function startSessionTimer() {
 // --- Init ---
 document.addEventListener('DOMContentLoaded', () => {
   document.body.classList.add('reduce-motion');
+  speechSynthesis.onvoiceschanged = () => SpeechEngine._loadFemaleVoice();
   document.getElementById('start-btn').addEventListener('click', startGame);
   document.getElementById('fullscreen-btn').addEventListener('click', () => {
     startGame();
@@ -895,6 +976,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('timer-btn').addEventListener('click', () => {
     startGame();
     startSessionTimer();
+  });
+
+  document.getElementById('phrase-bar').addEventListener('click', (e) => {
+    const btn = e.target.closest('.phrase-btn');
+    if (!btn) return;
+    const phrase = btn.dataset.phrase;
+    if (phrase) SpeechEngine.speak(phrase);
   });
 
   document.addEventListener('keydown', handleKeyDown);

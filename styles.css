@@ -49,6 +49,8 @@ body.reduce-motion * {
 body.reduce-motion .bubble,
 body.reduce-motion .shape-star,
 body.reduce-motion .shape-heart,
+body.reduce-motion .shape-square,
+body.reduce-motion .shape-triangle,
 body.reduce-motion .sparkle,
 body.reduce-motion .key-letter,
 body.reduce-motion .click-ripple {
@@ -57,7 +59,9 @@ body.reduce-motion .click-ripple {
 }
 body.reduce-motion .bubble,
 body.reduce-motion .shape-star,
-body.reduce-motion .shape-heart {
+body.reduce-motion .shape-heart,
+body.reduce-motion .shape-square,
+body.reduce-motion .shape-triangle {
   --ty: -30px !important;
 }
 body.reduce-motion .sparkle {
@@ -296,6 +300,25 @@ body.reduce-motion .letter-association-card.visible {
   text-transform: capitalize;
 }
 
+/* Shape preview in association card */
+.letter-assoc-emoji.shape-assoc {
+  width: clamp(4rem, 12vw, 6rem);
+  height: clamp(4rem, 12vw, 6rem);
+  display: inline-block;
+  border-radius: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.letter-assoc-emoji.shape-assoc[data-shape="circle"] {
+  border-radius: 50%;
+}
+.letter-assoc-emoji.shape-assoc[data-shape="square"] {
+  border-radius: 0;
+}
+.letter-assoc-emoji.shape-assoc[data-shape="triangle"] {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+
 /* Settings bar */
 #settings-bar {
   position: fixed;
@@ -328,7 +351,9 @@ body.reduce-motion .letter-association-card.visible {
 /* Bubble/particle */
 .bubble,
 .shape-star,
-.shape-heart {
+.shape-heart,
+.shape-square,
+.shape-triangle {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
@@ -364,6 +389,17 @@ body.reduce-motion .letter-association-card.visible {
 .shape-heart {
   --tx: 0;
   --ty: -100px;
+}
+
+/* Recognizable shapes (triangle, circle, square) for shape recognition */
+.shape-square {
+  border-radius: 0;
+  clip-path: none;
+}
+
+.shape-triangle {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
 }
 
 /* Sparkle (mouse trail) */
@@ -463,6 +499,101 @@ body.reduce-motion .letter-association-card.visible {
   }
 }
 
+/* Weather events - star rain & rainbow sweep */
+#weather-effect {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 190;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+#weather-effect.active {
+  opacity: 1;
+}
+
+.weather-star-rain .weather-star {
+  position: absolute;
+  top: -40px;
+  width: 24px;
+  height: 24px;
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  animation: starRainFall 2.5s ease-in forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes starRainFall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0.6;
+  }
+}
+
+.weather-rainbow-sweep .rainbow-sweep-bar {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 80%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 107, 157, 0.6),
+    rgba(255, 217, 61, 0.6),
+    rgba(107, 203, 119, 0.6),
+    rgba(77, 150, 255, 0.6),
+    rgba(168, 85, 247, 0.6),
+    rgba(34, 211, 238, 0.6),
+    transparent
+  );
+  animation: rainbowSweep 1.8s ease-in-out forwards;
+  will-change: transform;
+}
+
+@keyframes rainbowSweep {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(calc(100vw + 100%));
+  }
+}
+
+body.reduce-motion .weather-star-rain .weather-star {
+  animation: starRainFallReduced 1.2s ease-in forwards;
+}
+
+@keyframes starRainFallReduced {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(60vh);
+    opacity: 0.5;
+  }
+}
+
+body.reduce-motion .weather-rainbow-sweep .rainbow-sweep-bar {
+  animation: rainbowSweepReduced 0.6s ease-out forwards;
+}
+
+@keyframes rainbowSweepReduced {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(100vw);
+  }
+}
+
 /* Skip button */
 #skip-btn {
   position: fixed;
@@ -484,19 +615,27 @@ body.reduce-motion .letter-association-card.visible {
   background: rgba(255, 255, 255, 0.5);
 }
 
-/* Phrase bar - big tap targets for everyday language */
-.phrase-bar {
+/* Bottom bars container - stacks shapes above phrases */
+.bottom-bars {
   position: fixed;
   bottom: 1rem;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 45;
+  max-width: min(95vw, 600px);
+}
+
+/* Phrase bar - big tap targets for everyday language */
+.phrase-bar {
+  display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.75rem;
-  padding: 0.75rem;
-  z-index: 45;
-  max-width: min(95vw, 600px);
+  padding: 0.25rem;
 }
 
 .phrase-btn {
@@ -532,5 +671,46 @@ body.reduce-motion .letter-association-card.visible {
 
 body.reduce-motion .phrase-btn:hover,
 body.reduce-motion .phrase-btn:active {
+  transition: none;
+}
+
+/* Shape bar - tap targets for shape recognition */
+.shape-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.25rem;
+}
+
+.shape-btn {
+  min-width: 6rem;
+  min-height: 3.5rem;
+  padding: 0.6rem 1rem;
+  font-size: clamp(1rem, 3.5vw, 1.3rem);
+  font-family: inherit;
+  font-weight: bold;
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  cursor: pointer;
+  color: white;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.15));
+}
+
+.shape-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.shape-btn:active {
+  transform: scale(0.98);
+}
+
+body.reduce-motion .shape-btn:hover,
+body.reduce-motion .shape-btn:active {
   transition: none;
 }

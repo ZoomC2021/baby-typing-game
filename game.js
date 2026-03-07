@@ -9,7 +9,8 @@ const CONFIG = {
   letterAssociationDuration: 2500,
   maxPoolSize: 50,
   mouseTrailInterval: 80,
-  sessionMinutes: 5
+  sessionMinutes: 5,
+  weatherEventThreshold: 50
 };
 
 // --- Sound Engine (Web Audio API) ---
@@ -510,6 +511,16 @@ const LETTER_ASSOCIATIONS = {
   Z: { emoji: '🦓', word: 'Zebra' }
 };
 
+// --- Shape Recognition (triangle, circle, square) ---
+// Triggered by non-alphabet/numbers: [ ] ; keys, or clicks, or shape buttons
+const SHAPE_DEFINITIONS = {
+  circle: { name: 'Circle', class: 'bubble' },
+  square: { name: 'Square', class: 'shape-square' },
+  triangle: { name: 'Triangle', class: 'shape-triangle' }
+};
+const SHAPE_KEYS = { '[': 'square', ']': 'circle', ';': 'triangle' };
+const SHAPE_LIST = ['circle', 'square', 'triangle'];
+
 // --- Number Recognition (0-9) ---
 const NUMBER_ASSOCIATIONS = {
   '0': { emoji: '🥚', word: 'Zero' },
@@ -573,7 +584,14 @@ const SpeechEngine = {
       this.speak(upper);
     } else if (key.length === 1 && /[0-9]/.test(key)) {
       this.speak(key);
+    } else if (SHAPE_KEYS[key]) {
+      this.speak(SHAPE_DEFINITIONS[SHAPE_KEYS[key]].name);
     }
+  },
+
+  speakShape(shapeId) {
+    const def = SHAPE_DEFINITIONS[shapeId];
+    if (def) this.speak(def.name);
   }
 };
 
@@ -674,6 +692,56 @@ function createClickRipple(x, y) {
   setTimeout(() => ripple.remove(), 800);
 }
 
+function createShape(shapeId, x, y, isClick = false) {
+  const def = SHAPE_DEFINITIONS[shapeId];
+  if (!def) return;
+  const particles = document.getElementById('particles');
+  const el = Pool.getBubble();
+  el.className = def.class;
+
+  const size = isClick ? 40 + Math.random() * 60 : 30 + Math.random() * 50;
+  const tx = (Math.random() - 0.5) * 150;
+  const ty = -(50 + Math.random() * 100);
+
+  el.style.width = size + 'px';
+  el.style.height = size + 'px';
+  el.style.left = (x - size / 2) + 'px';
+  el.style.top = (y - size / 2) + 'px';
+  el.style.background = randomColor();
+  el.style.setProperty('--tx', tx + 'px');
+  el.style.setProperty('--ty', ty + 'px');
+
+  particles.appendChild(el);
+  setTimeout(() => Pool.returnBubble(el), 2000);
+}
+
+function showShapeAssociation(shapeId) {
+  const def = SHAPE_DEFINITIONS[shapeId];
+  if (!def) return;
+
+  const card = document.getElementById('letter-association');
+  const letterEl = document.getElementById('letter-assoc-letter');
+  const emojiEl = document.getElementById('letter-assoc-emoji');
+  const wordEl = document.getElementById('letter-assoc-word');
+
+  letterEl.textContent = '';
+  emojiEl.className = 'letter-assoc-emoji shape-assoc';
+  emojiEl.dataset.shape = shapeId;
+  emojiEl.textContent = '';
+  emojiEl.style.background = randomColor();
+  wordEl.textContent = def.name;
+  card.style.background = `linear-gradient(135deg, ${randomColor()}40, ${randomColor()}80)`;
+  card.classList.add('visible');
+
+  clearTimeout(card._hideTimer);
+  card._hideTimer = setTimeout(() => {
+    card.classList.remove('visible');
+    emojiEl.className = 'letter-assoc-emoji';
+    emojiEl.style.cssText = '';
+    delete emojiEl.dataset.shape;
+  }, CONFIG.letterAssociationDuration);
+}
+
 function showKeyLetter(key, x, y) {
   const display = document.getElementById('key-display');
   const keyName = key.length === 1 ? key.toUpperCase() : key;
@@ -702,6 +770,8 @@ function showLetterAssociation(letter, animalOverride) {
 
   letterEl.textContent = upper;
   emojiEl.textContent = assoc.emoji;
+  emojiEl.style.cssText = '';
+  delete emojiEl.dataset.shape;
   wordEl.textContent = assoc.word;
   card.style.background = `linear-gradient(135deg, ${randomColor()}40, ${randomColor()}80)`;
   card.classList.add('visible');
@@ -721,6 +791,8 @@ function showNumberAssociation(digit) {
 
   letterEl.textContent = digit;
   emojiEl.textContent = assoc.emoji;
+  emojiEl.style.cssText = '';
+  delete emojiEl.dataset.shape;
   wordEl.textContent = assoc.word;
   card.style.background = `linear-gradient(135deg, ${randomColor()}40, ${randomColor()}80)`;
   card.classList.add('visible');
@@ -774,6 +846,50 @@ function triggerCelebration() {
   }, 3000);
 }
 
+// --- Weather Events (star rain / rainbow sweep at 50 interactions) ---
+function triggerStarRain() {
+  const container = document.getElementById('weather-effect');
+  container.innerHTML = '';
+  container.className = 'weather-star-rain';
+  const rect = document.body.getBoundingClientRect();
+  const starCount = reduceMotion ? 15 : 35;
+  for (let i = 0; i < starCount; i++) {
+    const star = document.createElement('div');
+    star.className = 'weather-star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.animationDelay = Math.random() * 1.5 + 's';
+    star.style.background = randomColor();
+    container.appendChild(star);
+  }
+  container.classList.add('active');
+  setTimeout(() => {
+    container.classList.remove('active');
+    container.innerHTML = '';
+    container.className = '';
+  }, reduceMotion ? 1500 : 2500);
+}
+
+function triggerRainbowSweep() {
+  const container = document.getElementById('weather-effect');
+  container.innerHTML = '';
+  container.className = 'weather-rainbow-sweep';
+  const bar = document.createElement('div');
+  bar.className = 'rainbow-sweep-bar';
+  container.appendChild(bar);
+  container.classList.add('active');
+  setTimeout(() => {
+    container.classList.remove('active');
+    container.innerHTML = '';
+    container.className = '';
+  }, reduceMotion ? 800 : 1800);
+}
+
+function maybeTriggerWeatherEvent() {
+  if (interactionCount > 0 && interactionCount % CONFIG.weatherEventThreshold === 0) {
+    Math.random() < 0.5 ? triggerStarRain() : triggerRainbowSweep();
+  }
+}
+
 // --- Game State ---
 let gameStarted = false;
 let lastKeyTime = 0;
@@ -825,6 +941,7 @@ function handleKeyDown(e) {
   lastKeyTime = now;
 
   const isSpecial = ['Space', 'Enter', 'Tab', 'Escape'].includes(e.key);
+  const shapeId = SHAPE_KEYS[e.key];
   let animalOverride = null;
   if (settings.animalMode && /^[a-zA-Z]$/.test(e.key)) {
     const upper = e.key.toUpperCase();
@@ -836,23 +953,29 @@ function handleKeyDown(e) {
     }
   }
   if (isSpecial) SoundEngine.playBoopSound();
+  else if (shapeId) SoundEngine.playClickSound();
   else if (settings.animalMode) SoundEngine.playAnimalSound(e.key, animalOverride);
   else SoundEngine.playKeySound(e.key);
 
   SpeechEngine.speakKey(e.key, animalOverride);
+  if (shapeId) SpeechEngine.speakShape(shapeId);
 
   const rect = document.body.getBoundingClientRect();
   const x = rect.width / 2 + (Math.random() - 0.5) * 200;
   const y = rect.height / 2 + (Math.random() - 0.5) * 200;
 
-  createBubble(x, y, false);
-  showKeyLetter(e.key, x, y);
-  spawnFloatingLetter(e.key, x, y - 50);
-
-  if (/^[a-zA-Z]$/.test(e.key)) {
-    showLetterAssociation(e.key, animalOverride);
-  } else if (/^[0-9]$/.test(e.key)) {
-    showNumberAssociation(e.key);
+  if (shapeId) {
+    createShape(shapeId, x, y, false);
+    showShapeAssociation(shapeId);
+  } else {
+    createBubble(x, y, false);
+    showKeyLetter(e.key, x, y);
+    spawnFloatingLetter(e.key, x, y - 50);
+    if (/^[a-zA-Z]$/.test(e.key)) {
+      showLetterAssociation(e.key, animalOverride);
+    } else if (/^[0-9]$/.test(e.key)) {
+      showNumberAssociation(e.key);
+    }
   }
 
   interactionCount++;
@@ -860,6 +983,7 @@ function handleKeyDown(e) {
     screenShake();
     triggerCelebration();
   }
+  maybeTriggerWeatherEvent();
 }
 
 function handleClick(e) {
@@ -868,15 +992,20 @@ function handleClick(e) {
     return;
   }
   if (parentLocked && e.target.closest('#settings-bar')) return;
+  if (e.target.closest('.shape-btn')) return;
 
   SoundEngine.playClickSound();
 
   const x = e.clientX;
   const y = e.clientY;
 
-  createBubble(x, y, true);
+  const shapeId = SHAPE_LIST[Math.floor(Math.random() * SHAPE_LIST.length)];
+  createShape(shapeId, x, y, true);
+  SpeechEngine.speakShape(shapeId);
+  showShapeAssociation(shapeId);
+
   createClickRipple(x, y);
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 3; i++) {
     setTimeout(() => {
       createBubble(x + (Math.random() - 0.5) * 80, y + (Math.random() - 0.5) * 80, true);
     }, i * 60);
@@ -887,6 +1016,7 @@ function handleClick(e) {
     screenShake();
     triggerCelebration();
   }
+  maybeTriggerWeatherEvent();
 }
 
 function handleTouch(e) {
@@ -895,7 +1025,25 @@ function handleTouch(e) {
     const t = e.touches[0];
     const target = document.elementFromPoint(t.clientX, t.clientY);
     const phraseBtn = target?.closest('.phrase-btn');
-    if (phraseBtn?.dataset.phrase) SpeechEngine.speak(phraseBtn.dataset.phrase);
+    if (phraseBtn?.dataset.phrase) {
+      SpeechEngine.speak(phraseBtn.dataset.phrase);
+      return;
+    }
+    const shapeBtn = target?.closest('.shape-btn');
+    if (shapeBtn?.dataset.shape) {
+      if (!gameStarted) startGame();
+      const shapeId = shapeBtn.dataset.shape;
+      if (SHAPE_DEFINITIONS[shapeId]) {
+        const rect = document.body.getBoundingClientRect();
+        const x = rect.width / 2 + (Math.random() - 0.5) * 150;
+        const y = rect.height / 2 + (Math.random() - 0.5) * 150;
+        SoundEngine.playClickSound();
+        createShape(shapeId, x, y, true);
+        SpeechEngine.speakShape(shapeId);
+        showShapeAssociation(shapeId);
+      }
+      return;
+    }
     const ev = new MouseEvent('click', { clientX: t.clientX, clientY: t.clientY });
     handleClick(ev);
   }
@@ -983,6 +1131,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!btn) return;
     const phrase = btn.dataset.phrase;
     if (phrase) SpeechEngine.speak(phrase);
+  });
+
+  document.getElementById('shape-bar').addEventListener('click', (e) => {
+    const btn = e.target.closest('.shape-btn');
+    if (!btn) return;
+    if (!gameStarted) startGame();
+    const shapeId = btn.dataset.shape;
+    if (!shapeId || !SHAPE_DEFINITIONS[shapeId]) return;
+    const rect = document.body.getBoundingClientRect();
+    const x = rect.width / 2 + (Math.random() - 0.5) * 150;
+    const y = rect.height / 2 + (Math.random() - 0.5) * 150;
+    SoundEngine.playClickSound();
+    createShape(shapeId, x, y, true);
+    SpeechEngine.speakShape(shapeId);
+    showShapeAssociation(shapeId);
   });
 
   document.addEventListener('keydown', handleKeyDown);

@@ -45,13 +45,21 @@
       <button id="timer-btn" title="5 min session">⏱️</button>
     </div>
     <button id="skip-btn" title="Skip intro (for parents)">Skip</button>
-    <div id="phrase-bar" class="phrase-bar" aria-label="Common phrases">
-      <button type="button" class="phrase-btn" data-phrase="Bye bye!">👋 Bye bye!</button>
-      <button type="button" class="phrase-btn" data-phrase="Hello!">👋 Hello!</button>
-      <button type="button" class="phrase-btn" data-phrase="More!">🙌 More!</button>
-      <button type="button" class="phrase-btn" data-phrase="All done!">✅ All done!</button>
+    <div id="bottom-bars" class="bottom-bars">
+      <div id="shape-bar" class="shape-bar" aria-label="Shapes">
+        <button type="button" class="shape-btn" data-shape="circle" title="Circle">⬤ Circle</button>
+        <button type="button" class="shape-btn" data-shape="square" title="Square">▢ Square</button>
+        <button type="button" class="shape-btn" data-shape="triangle" title="Triangle">△ Triangle</button>
+      </div>
+      <div id="phrase-bar" class="phrase-bar" aria-label="Common phrases">
+        <button type="button" class="phrase-btn" data-phrase="Bye bye!">👋 Bye bye!</button>
+        <button type="button" class="phrase-btn" data-phrase="Hello!">👋 Hello!</button>
+        <button type="button" class="phrase-btn" data-phrase="More!">🙌 More!</button>
+        <button type="button" class="phrase-btn" data-phrase="All done!">✅ All done!</button>
+      </div>
     </div>
     <div id="celebration"></div>
+    <div id="weather-effect" aria-hidden="true"></div>
   </div>
 
   <script src="game.js"></script>

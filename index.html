@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#667eea">
+  <meta name="description" content="Baby Smash - Let your child smash the keyboard and mouse with fun sounds and colors!">
   <title>Baby Smash - Keyboard & Mouse Fun!</title>
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,6 +14,17 @@
     <h1>Baby Smash</h1>
     <p>Let your child smash the keyboard and mouse!</p>
     <p class="subtitle">Every tap and click makes fun sounds and colors ✨</p>
+    <div class="intro-options">
+      <label><input type="checkbox" id="opt-animal-mode"> Animal sounds</label>
+      <label><input type="checkbox" id="opt-reduce-motion" checked> Reduce motion</label>
+    </div>
+    <select id="theme-select">
+      <option value="rainbow">Rainbow</option>
+      <option value="ocean">Ocean</option>
+      <option value="forest">Forest</option>
+      <option value="sunset">Sunset</option>
+      <option value="space">Space</option>
+    </select>
     <button id="start-btn">Let's Play!</button>
     <button id="fullscreen-btn">Go Fullscreen</button>
   </div>
@@ -18,7 +32,14 @@
   <div id="game-area">
     <div id="particles"></div>
     <div id="key-display"></div>
+    <div id="settings-bar">
+      <button id="mute-btn" title="Mute">🔊</button>
+      <input type="range" id="volume-slider" min="0" max="100" value="100" title="Volume">
+      <button id="parent-lock-btn" title="Parent lock (Ctrl+Shift+L to unlock)">🔓</button>
+      <button id="timer-btn" title="5 min session">⏱️</button>
+    </div>
     <button id="skip-btn" title="Skip intro (for parents)">Skip</button>
+    <div id="celebration"></div>
   </div>
 
   <script src="game.js"></script>

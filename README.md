@@ -4,23 +4,47 @@ A playful browser game for toddlers—let them smash the keyboard and mouse! Ins
 
 ## Features
 
-- **Keyboard**: Every key press creates bubbles, shows the letter, and plays a bouncy sound
+### Interaction
+- **Keyboard**: Every key press creates bubbles, shows the letter, and plays a sound (pitch varies by key)
 - **Mouse**: Every click spawns colorful bubbles and plays a satisfying "plink"
-- **Fullscreen mode**: Immersive play for little ones
-- **No external dependencies**: Pure HTML, CSS, and JavaScript with Web Audio API for sounds
+- **Touch**: Full touch support for tablets and phones
+- **Mouse trails**: Sparkles follow the cursor as you move
+
+### Sounds
+- **Key sounds**: Pitch varies by key; special keys (Space, Enter, Tab, Escape) play a deeper "boop"
+- **Animal mode**: Each letter plays a unique two-tone sound (A–Z)
+- **Volume control**: Slider and mute button for parents
+
+### Visuals
+- **Shapes**: Bubbles, stars, and hearts
+- **Color themes**: Rainbow, Ocean, Forest, Sunset, Space
+- **Celebration**: Confetti and screen shake every 25 interactions
+- **Reduce motion**: Accessibility option to minimize animations
+
+### Parent Controls
+- **Parent lock**: Hide Skip button; unlock with Ctrl+Shift+L
+- **Session timer**: 5-minute play session
+- **Fullscreen**: F11 or button for immersive mode
+
+### Technical
+- **PWA**: Add to home screen on mobile; works offline
+- **DOM pooling**: Efficient memory use during long play sessions
+- **No external dependencies**: Pure HTML, CSS, and JavaScript
 
 ## How to Run
 
-1. Open `index.html` in a modern browser, or
-2. Serve locally (recommended for fullscreen):
-   ```bash
-   npx serve .
-   ```
-   Then open http://localhost:3000
+```bash
+make serve
+# or: npx serve . -p 3333
+```
+
+Then open http://localhost:3333
+
+Or open `index.html` directly in a browser (some features like PWA require a server).
 
 ## Browser Support
 
-Works in Chrome, Firefox, Safari, and Edge. Requires a browser that supports the Web Audio API.
+Works in Chrome, Firefox, Safari, and Edge. Requires Web Audio API support.
 
 ## License
 

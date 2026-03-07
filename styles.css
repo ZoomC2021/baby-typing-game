@@ -1,0 +1,212 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  min-height: 100vh;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Intro overlay */
+#intro-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(102, 126, 234, 0.95);
+  z-index: 100;
+  transition: opacity 0.5s ease;
+}
+
+#intro-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#intro-overlay h1 {
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  color: white;
+  text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.2);
+  margin-bottom: 1rem;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+#intro-overlay p {
+  font-size: clamp(1rem, 3vw, 1.5rem);
+  color: white;
+  margin-bottom: 0.5rem;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.15);
+}
+
+#intro-overlay .subtitle {
+  font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+  opacity: 0.95;
+  margin-bottom: 2rem;
+}
+
+#intro-overlay button {
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  font-family: inherit;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  margin: 0.5rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+  font-weight: bold;
+}
+
+#intro-overlay button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+#start-btn {
+  background: #ff6b9d;
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 107, 157, 0.5);
+}
+
+#fullscreen-btn {
+  background: rgba(255, 255, 255, 0.9);
+  color: #667eea;
+}
+
+/* Game area */
+#game-area {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+#particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#key-display {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(4rem, 15vw, 12rem);
+  font-weight: bold;
+  color: white;
+  text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}
+
+#key-display.visible {
+  opacity: 1;
+  animation: popIn 0.3s ease-out forwards;
+}
+
+@keyframes popIn {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Bubble/particle */
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: bubbleFloat 2s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes bubbleFloat {
+  0% {
+    transform: scale(0) translate(0, 0);
+    opacity: 1;
+  }
+  20% {
+    transform: scale(1) translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translate(var(--tx, 0), var(--ty, -100px));
+    opacity: 0;
+  }
+}
+
+/* Key letter display */
+.key-letter {
+  position: absolute;
+  font-size: clamp(2rem, 8vw, 6rem);
+  font-weight: bold;
+  color: white;
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+  animation: letterFloat 1.5s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes letterFloat {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(-80px);
+    opacity: 0;
+  }
+}
+
+/* Skip button */
+#skip-btn {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-radius: 20px;
+  color: white;
+  cursor: pointer;
+  z-index: 50;
+  transition: background 0.2s;
+}
+
+#skip-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+}

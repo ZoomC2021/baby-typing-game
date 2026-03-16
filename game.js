@@ -202,27 +202,27 @@ const ANIMAL_AUDIO_FILES = {
   C: 'sounds/cat.mp3', // also cow.mp3 via ROTATING_ANIMALS
   D: 'sounds/dog.mp3',
   E: 'sounds/elephant.mp3',
-  F: 'sounds/frog.mp3',
+  F: 'sounds/dog.mp3', // fallback to dog
   G: 'sounds/goat.mp3',
   H: 'sounds/horse.mp3',
   I: 'sounds/insect.mp3',
-  J: 'sounds/jay.mp3',
-  K: 'sounds/koala.mp3',
+  J: 'sounds/duck.mp3', // fallback to duck (jay)
+  K: 'sounds/cat.mp3', // fallback to cat (koala)
   L: 'sounds/lion.mp3',
   M: 'sounds/monkey.mp3',
-  N: 'sounds/nightingale.mp3',
+  N: 'sounds/owl.mp3', // fallback to owl (nightingale)
   O: 'sounds/owl.mp3',
   P: 'sounds/pig.mp3',
   Q: 'sounds/duck.mp3',
   R: 'sounds/rooster.mp3',
   S: 'sounds/snake.mp3',
   T: 'sounds/tiger.mp3',
-  U: 'sounds/unicorn.mp3',
-  V: 'sounds/vulture.mp3',
+  U: 'sounds/horse.mp3', // fallback to horse (unicorn)
+  V: 'sounds/duck.mp3', // fallback to duck (vulture)
   W: 'sounds/wolf.mp3',
-  X: 'sounds/ox.mp3',
-  Y: 'sounds/yak.mp3',
-  Z: 'sounds/zebra.mp3'
+  X: 'sounds/cow.mp3', // fallback to cow (ox)
+  Y: 'sounds/goat.mp3', // fallback to goat (yak)
+  Z: 'sounds/snake.mp3' // fallback to snake (zebra)
 };
 
 const AnimalAudioPlayer = {

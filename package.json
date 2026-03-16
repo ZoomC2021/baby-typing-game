@@ -1,0 +1,22 @@
+{
+  "name": "baby-smash",
+  "version": "1.0.0",
+  "description": "A playful keyboard & mouse game for toddlers",
+  "type": "module",
+  "scripts": {
+    "dev": "npx serve . -p 5173",
+    "build": "echo 'No build needed - static HTML project'",
+    "preview": "npx serve . -p 4173"
+  },
+  "keywords": [
+    "toddler",
+    "educational",
+    "game",
+    "keyboard",
+    "pwa"
+  ],
+  "author": "",
+  "license": "AGPL-3.0",
+  "dependencies": {},
+  "devDependencies": {}
+}
